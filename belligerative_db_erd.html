@@ -1,0 +1,108 @@
+
+<style>
+#erd { padding: 0.5rem 0; }
+#erd svg { width: 100%; height: auto; }
+#erd svg.erDiagram .divider path { stroke-opacity: 0.4; }
+#erd svg.erDiagram .row-rect-odd path,
+#erd svg.erDiagram .row-rect-odd rect,
+#erd svg.erDiagram .row-rect-even path,
+#erd svg.erDiagram .row-rect-even rect { stroke: none !important; }
+</style>
+<div id="erd"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#1A3A5C' : '#E1F5EE',
+    primaryTextColor: dark ? '#9FE1CB' : '#085041',
+    primaryBorderColor: dark ? '#5DCAA5' : '#0F6E56',
+    secondaryColor: dark ? '#26215C' : '#EEEDFE',
+    secondaryTextColor: dark ? '#CECBF6' : '#3C3489',
+    secondaryBorderColor: dark ? '#AFA9EC' : '#534AB7',
+    tertiaryColor: dark ? '#412402' : '#FAEEDA',
+    tertiaryTextColor: dark ? '#FAC775' : '#633806',
+    tertiaryBorderColor: dark ? '#EF9F27' : '#854F0B',
+  },
+});
+const diagram = `erDiagram
+  missions {
+    uuid id PK
+    string name
+    date flight_date
+    string operator
+    float alt_m
+    string area_wkt
+    string status
+    timestamp created_at
+  }
+  images {
+    uuid id PK
+    uuid mission_id FK
+    string filename
+    string storage_url
+    geometry location
+    float altitude_m
+    float heading_deg
+    timestamp captured_at
+    string processing_status
+  }
+  markers {
+    uuid id PK
+    uuid image_id FK
+    uuid mission_id FK
+    geometry geom
+    string marker_class
+    float confidence
+    int bbox_x int
+    int bbox_y int
+    int bbox_w int
+    int bbox_h int
+    timestamp detected_at
+  }
+  marker_classes {
+    string code PK
+    string label_ru
+    string color_hex
+    string icon_name
+  }
+  missions ||--o{ images : contains
+  missions ||--o{ markers : has
+  images ||--o{ markers : produces
+  marker_classes ||--o{ markers : classifies
+`;
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+document.querySelectorAll('#erd svg.erDiagram .row-rect-odd path, #erd svg.erDiagram .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>
